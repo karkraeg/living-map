@@ -399,6 +399,28 @@ export function openDb(file: string) {
 
     saveConv,
 
+    // a conversation and everything filed under it, in one transaction
+    removeConv(root: string) {
+      tx(() => {
+        for (const t of ["side_messages", "side_proposals"])
+          db.prepare(
+            `DELETE FROM ${t} WHERE side IN (SELECT id FROM sides WHERE conv = ?)`,
+          ).run(root);
+        for (const t of [
+          "sides",
+          "told",
+          "changes",
+          "spend",
+          "runs",
+          "log",
+          "items",
+          "sources",
+        ])
+          db.prepare(`DELETE FROM ${t} WHERE conv = ?`).run(root);
+        db.prepare("DELETE FROM conversations WHERE root = ?").run(root);
+      });
+    },
+
     // a conversation's store, as the last applied run left it
     load(root: string): State | null {
       const r = db

@@ -82,6 +82,7 @@ const ROUTES: [string, string][] = [
   ["GET", "/api/ledger/view"],
   ["GET", "/api/ledger/chats"],
   ["POST", "/api/ledger/act"],
+  ["POST", "/api/ledger/remove"],
   ["POST", "/api/open"],
   ["GET", "/api/update"],
   ["POST", "/api/update"],

@@ -121,6 +121,13 @@ export function post(
   save(o, dir);
 }
 
+// drops what the chat was to hear, with its file
+export function forget(id: string, dir = OUTBOX_DIR) {
+  if (!isId(id)) return;
+  cache.delete(`${dir}/${id}`);
+  fs.rmSync(fileOf(id, dir), { force: true });
+}
+
 // when the chat last took its inbox (0: never)
 export const heardAt = (ids: string[], dir = OUTBOX_DIR) =>
   outboxOf(ids, "", dir).heardAt ?? 0;

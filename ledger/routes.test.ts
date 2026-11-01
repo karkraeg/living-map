@@ -287,3 +287,32 @@ test("a chat linked through /api/link is followed, filed and acted on", async ()
     "pushed to the page when the chat took it",
   );
 });
+
+test("removing a chat drops its map, its files and its place in the list", async () => {
+  const dir = process.env.LIVING_MAP_HOME!;
+  const handover = path.join(dir, "handover", "chat-1.md");
+  assert.ok(fs.existsSync(handover), "the chat has a handover to remove");
+  assert.equal(
+    (await call("POST", "/api/ledger/remove", { conv: "chat-1" }, null)).status,
+    401,
+  );
+  assert.equal(
+    (await call("POST", "/api/ledger/remove", { conv: "nope" })).status,
+    404,
+  );
+  const gone = await call("POST", "/api/ledger/remove", { conv: "chat-1" });
+  assert.equal(gone.status, 200);
+  assert.deepEqual(map.ledger.following(), []);
+  assert.deepEqual((await call("GET", "/api/ledger/chats")).json, []);
+  assert.equal((await call("GET", "/api/ledger/view?conv=chat-1")).status, 404);
+  assert.equal(fs.existsSync(handover), false);
+  assert.equal(
+    fs.existsSync(path.join(dir, "conversations", "chat-1.json")),
+    false,
+  );
+  // /living-map in it again maps it afresh
+  assert.equal(
+    (await call("POST", "/api/link", { session: "chat-1" })).json.created,
+    true,
+  );
+});

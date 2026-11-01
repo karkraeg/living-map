@@ -1013,6 +1013,14 @@ export function createSides(deps: SideDeps) {
       const row = own(conv, id);
       return row ? chatOf(row) : null;
     },
+    // ends a chat's side chats and removes the files they read
+    forget(conv: string) {
+      for (const row of db.sides(conv)) {
+        queues.delete(row.id);
+        end(row.id);
+      }
+      fs.rmSync(dirOf(conv), { recursive: true, force: true });
+    },
     // processes running now, by side chat id (for tests)
     running: () => [...procs.keys()],
     close() {

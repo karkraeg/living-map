@@ -4,6 +4,7 @@
 //
 //   GET  /api/ledger/view?conv=<id>  the map of a chat (else the one linked last)
 //   GET  /api/ledger/chats           every chat with a map, waiting on you first
+//   POST /api/ledger/remove {conv}   drop a chat's map and what is kept for it
 //   POST /api/ledger/act {conv, action}  what you did on it; a side chat's
 //                                        actions (sides.ts) answer {side, view}
 
@@ -15,8 +16,8 @@ import { compare, shadowFor, snapshot } from "./changes/snapshot.ts";
 import { summarize } from "./chats.ts";
 import { openDb, type Conv } from "./db.ts";
 import { createLedger, type Ledger } from "./follow.ts";
-import { writeHandover } from "./handover.ts";
-import { heardAt as heardAtOf, post } from "./outbox.ts";
+import { handoverPaths, writeHandover } from "./handover.ts";
+import { forget, heardAt as heardAtOf, post } from "./outbox.ts";
 import { outline as outlineOf, type OutlineLens } from "./outline.ts";
 import { createSides, type Sides } from "./sides.ts";
 import { HOME } from "../server/config.ts";
@@ -108,6 +109,34 @@ export function startLedger(
   // for the page's list of your maps
   router.get("/chats", (_req, res) => {
     res.json(summarize(ledger.conversations(), ledger.view));
+  });
+  // the chat's map, its side chats and the files kept for it are deleted; it
+  // is mapped again only when you say /living-map in it again
+  router.post("/remove", async (req, res) => {
+    const body = (req.body ?? {}) as { conv?: unknown };
+    const conv =
+      typeof body.conv === "string"
+        ? ledger.conversations().find((c) => c.root === body.conv)
+        : undefined;
+    if (!conv) {
+      res.status(404).json({ error: "No such chat is mapped." });
+      return;
+    }
+    try {
+      sides.forget(conv.root);
+      await ledger.forget(conv.root);
+      forget(idsOf(conv)[0]!);
+      const p = handoverPaths(HOME, conv);
+      fs.rmSync(p.chat, { force: true });
+      if (p.project && !ledger.conversations().some((c) => c.cwd === conv.cwd))
+        fs.rmSync(p.project, { force: true });
+      res.json({ removed: conv.root });
+    } catch (e) {
+      console.error("[ledger] remove failed:", e);
+      res
+        .status(500)
+        .json({ error: "Something went wrong on the server. Try again." });
+    }
   });
   router.post("/act", async (req, res) => {
     const body = (req.body ?? {}) as { conv?: unknown; action?: unknown };

@@ -745,6 +745,15 @@ export function createLedger(deps: LedgerDeps) {
       const root = db.findConv([session])?.root;
       if (root) push(root);
     },
+    // stops following a chat and drops its map; the files kept for it are
+    // removed by the caller (routes.ts)
+    async forget(root: string) {
+      const f = followers.get(root);
+      if (f) f.s.conv.following = false;
+      followers.delete(root);
+      await f?.running;
+      db.removeConv(root);
+    },
     // the conversation any of these ids is filed under
     rootOf: (ids: string[]) => db.findConv(unique(ids))?.root ?? null,
     // the one linked last

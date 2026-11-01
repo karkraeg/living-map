@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { Mark } from "./components/Logo.tsx";
+import { More } from "./components/More.tsx";
 import { api } from "./lib/session.ts";
 import type { ChatSummary } from "../shared/ledger.ts";
 
@@ -29,6 +30,23 @@ export function Chats() {
     };
   }, []);
 
+  const remove = async (c: ChatSummary) => {
+    const ok = window.confirm(
+      `Remove "${c.title || "Untitled chat"}" from Living Map? Its map and side chats are deleted. The chat itself is not touched.`,
+    );
+    if (!ok) return;
+    const r = await api("/api/ledger/remove", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ conv: c.conv }),
+    }).catch(() => null);
+    if (r?.ok)
+      setChats((all) =>
+        Array.isArray(all) ? all.filter((x) => x.conv !== c.conv) : all,
+      );
+    else window.alert("Couldn't remove it. Try again.");
+  };
+
   return (
     <div className="min-h-full bg-canvas px-4 py-10">
       <div className="mx-auto max-w-lg">
@@ -52,7 +70,7 @@ export function Chats() {
         {Array.isArray(chats) && chats.length > 0 && (
           <ul className="mt-6 space-y-2">
             {chats.map((c) => (
-              <li key={c.conv}>
+              <li key={c.conv} className="relative">
                 <a
                   href={`/?conv=${encodeURIComponent(c.conv)}`}
                   target="_blank"
@@ -84,6 +102,20 @@ export function Chats() {
                     <span className="shrink-0">linked {ago(c.linkedAt)}</span>
                   </div>
                 </a>
+                <div className="absolute right-2 bottom-2">
+                  <More
+                    sections={[
+                      {
+                        items: [
+                          {
+                            label: "Remove from Living Map",
+                            onClick: () => void remove(c),
+                          },
+                        ],
+                      },
+                    ]}
+                  />
+                </div>
               </li>
             ))}
           </ul>
